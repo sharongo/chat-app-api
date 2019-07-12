@@ -112,20 +112,6 @@ app.get('/api/channels/getchannels', function (req, res) {
         }
         const channelsNames = reply[1];
         
-
-        // for(var i = 0; i < channelsNames.length; i++){
-        //     client.hgetall(channelsNames[i], function(err, channel){
-        //         const channelToAdd = {
-        //             id: channel.id,
-        //             name: channel.name,
-        //             details: channel.details,
-        //             createdBy: channel.createdBy
-        //         }
-        //         channels.push(channelToAdd)
-                
-        //     })
-        // }
-
         channelsNames.forEach(function (name) {
             client.hgetall(name, function (err, channel) {
                 const channelToAdd = {
