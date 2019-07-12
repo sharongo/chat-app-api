@@ -13,6 +13,7 @@
     "cors": "^2.8.5",
     "express": "*",
     "morgan": "*",
-    "redis": "*"
+    "redis": "*",
+    "uuid": "^3.3.2"
   }
 }
