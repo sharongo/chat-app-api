@@ -83,6 +83,7 @@ app.post('/api/users/login', function (req, res) {
 })
 
 app.post('/api/channels/addchannel', function (req, res) {
+    var channelName = req.body.name
     var uuid = uuidv4()
     var newChannel = {
         id: uuid,
@@ -90,50 +91,115 @@ app.post('/api/channels/addchannel', function (req, res) {
         details: req.body.details,
         createdBy: req.body.createdBy
     }
-    client.hmset(`channel:${req.body.name}`, [
-        'id', newChannel.id,
-        'name', newChannel.name,
-        'details', newChannel.details,
-        'createdBy', newChannel.createdBy
-    ], function (err, reply) {
+
+    client.lpush('channels', channelName, function (err, reply) {
         if (err) {
             res.status(400).json(err);
         }
-        res.json(newChannel);
+        client.hmset(`channel:${req.body.name}`, [
+            'id', newChannel.id,
+            'name', newChannel.name,
+            'details', newChannel.details,
+            'createdBy', newChannel.createdBy
+        ], function (err, reply) {
+            if (err) {
+                res.status(400).json(err);
+            }
+            res.json(newChannel);
 
+        })
     })
 })
 
+
 app.get('/api/channels/getchannels', function (req, res) {
-    const channels = []
-    client.scan('0', 'match', 'channel:*', 'count', '1000', function (err, reply) {
+    const channelsToReturn = []
+    client.lrange('channels', 0, -1, function (err, channels) {
         if (err) {
             res.status(400).json(err);
         }
-        const channelsNames = reply[1];
-        
-        channelsNames.forEach(function (name) {
-            client.hgetall(name, function (err, channel) {
+
+        channels.forEach(function(name) {
+            client.hgetall('channel:' + name, function (err, channel) {
+                if(err){
+                    res.status(400).json(err);
+                }
                 const channelToAdd = {
                     id: channel.id,
                     name: channel.name,
                     details: channel.details,
                     createdBy: channel.createdBy
                 }
-                channels.push(channelToAdd)
-                if(channels.length == channelsNames.length){
-                    res.json(channels)
+                channelsToReturn.push(channelToAdd)
+                if(channels.length == channelsToReturn.length){
+                    res.json(channelsToReturn)
                 }
-                
             })
-            
         })
-        
-        
-        
     })
-   
-   
+})
+
+app.post('/api/messages/addmessage', function(req, res){
+    var channelId = req.body.channelId;
+    var messageId = uuidv4();
+    var timestamp = Date.now()
+    var messageToAdd = {
+        id: messageId,
+        time: new Date(timestamp),
+        channelId: channelId,
+        user: req.body.user,
+        content: req.body.content
+    }
+    client.lpush(channelId, messageId, function(err, replay){
+        if(err){
+            res.status(400).json(err);
+        }
+        client.hmset(`message:${messageId}`, [
+            'id', messageToAdd.id,
+            'time', messageToAdd.time,
+            'channelId', messageToAdd.channelId,
+            'user', messageToAdd.user,
+            'content', messageToAdd.content
+        ], function (err, reply) {
+            if (err) {
+                res.status(400).json(err);
+            }
+            res.json(messageToAdd);
+        })
+    })
+})
+
+
+app.get('/api/messages/getmessages/:channelId', function(req, res){
+    const messagesToReturn = [];
+    //var channelId = req.params.channelId.substring(1, req.params.channelId.length -1)
+    var channelId = req.params.channelId
+
+    client.lrange(channelId, 0, -1, function(err, messagesIds){
+        if(err){
+            res.status(400).json(err);
+        }
+        messagesIds.forEach(function(id){
+            client.hgetall(`message:${id}`, function(err, message){
+                if(err){
+                    res.status(400).json(err);
+                }
+                const messageToAdd = {
+                    id: message.id,
+                    tiem: message.time,
+                    channelId: message.channelId,
+                    user: message.user,
+                    content: message.content
+                }
+                messagesToReturn.push(messageToAdd);
+                if(messagesIds.length == messagesToReturn.length){
+                    res.json(messagesToReturn)
+                }
+
+            })
+        })
+    })
+
 })
 
 
