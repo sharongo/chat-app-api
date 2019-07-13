@@ -61,7 +61,7 @@ app.post('/api/users/register', function (req, res) {
 app.post('/api/users/login', function (req, res) {
     client.hmget(`user:${req.body.email}`, 'email', 'password', function (err, reply) {
         if (err) {
-            res.status(400).json(err);
+            res.status(404).json(err);
         }
         if (reply[0] === req.body.email && reply[1] === req.body.password) {
             client.hget(`user:${req.body.email}`, 'username', function (error, username) {
